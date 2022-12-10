@@ -1,10 +1,11 @@
-const { app, BrowserWindow, globalShortcut, protocol, ipcMain, dialog} = require('electron');
+const { app, BrowserWindow, globalShortcut, protocol, ipcMain, dialog } = require('electron');
 app.startedAt = Date.now();
 const path = require('path');
 const official_settings = ['Unlimited FPS'];
 
 //auto update
 const { autoUpdater } = require("electron-updater")
+const { MacUpdater } = require("electron-updater")
 let updateLoaded = false;
 let updateNow = false;
 
@@ -24,6 +25,7 @@ const rpc_script = require('./rpc.js');
 
 //swapper_func
 const swapper = require('./swapper.js');
+const { machine } = require('os');
 
 
 //Uncap FPS
@@ -55,7 +57,7 @@ const createWindow = () => {
     globalShortcut.register('F5', () => win.reload());
     globalShortcut.register('Escape', () => win.webContents.executeJavaScript('document.exitPointerLock()', true));
     globalShortcut.register('F7', () => win.webContents.toggleDevTools());
-    globalShortcut.register('F11', () => {win.fullScreen = !win.fullScreen; settings.set('Fullscreen', win.fullScreen)});
+    globalShortcut.register('F11', () => { win.fullScreen = !win.fullScreen; settings.set('Fullscreen', win.fullScreen) });
 
     win.on('page-title-updated', (e) => {
         e.preventDefault();
@@ -65,47 +67,81 @@ const createWindow = () => {
 
     //Swapper
 
-     //Auto Update
+    //Auto Update
 
-     autoUpdater.checkForUpdates();
+    console.log("hello")
+    console.log(process.platform)
 
-     autoUpdater.on('update-available', () => {
- 
-         const options = {
-             title: "Client Update",
-             buttons: ["Now", "Later"],
-             message: "Client Update available, do you want to install it now or after the next restart?",
-             icon: __dirname + "/icon.ico"
-         }
-         dialog.showMessageBox(options).then((result) => {
-             if (result.response === 0) {
-                 updateNow = true;
-                 if (updateLoaded) {
-                     autoUpdater.quitAndInstall();
-                 }
-             }
-         });
- 
-     });
- 
-     autoUpdater.on('update-downloaded', () => {
-         updateLoaded = true;
-         if (updateNow) {
-             autoUpdater.quitAndInstall();
-         }
-     });
+    if (process.platform == "win32") {
+        autoUpdater.checkForUpdates();
 
-    ipcMain.on('loadScripts', function(event) {
+        autoUpdater.on('update-available', () => {
+
+            const options = {
+                title: "Client Update",
+                buttons: ["Now", "Later"],
+                message: "Client Update available, do you want to install it now or after the next restart?",
+                icon: __dirname + "/icon.ico"
+            }
+            dialog.showMessageBox(options).then((result) => {
+                if (result.response === 0) {
+                    updateNow = true;
+                    if (updateLoaded) {
+                        autoUpdater.quitAndInstall();
+                    }
+                }
+            });
+
+        });
+
+        autoUpdater.on('update-downloaded', () => {
+            updateLoaded = true;
+            if (updateNow) {
+                autoUpdater.quitAndInstall(true, true);
+            }
+        });
+    }
+
+    if (process.platform == "darwin") {
+        MacUpdater.checkForUpdates();
+
+        MacUpdater.on('update-available', () => {
+            const options = {
+                title: "Client Update",
+                buttons: ["Now", "Later"],
+                message: "Client Update available, do you want to install it now or after the next restart?",
+                icon: __dirname + "/icon.ico"
+            }
+            dialog.showMessageBox(options).then((result) => {
+                if (result.response === 0) {
+                    updateNow = true;
+                    if (updateLoaded) {
+                        autoUpdater.quitAndInstall();
+                    }
+                }
+            });
+
+        });
+
+        MacUpdater.on('update-downloaded', () => {
+            updateLoaded = true;
+            if (updateNow) {
+                MacUpdater.quitAndInstall();
+            }
+        });
+    }
+
+    ipcMain.on('loadScripts', function (event) {
         swapper.runScripts(win, app);
         event.sender.send('scriptsLoaded', true);
     });
-    
+
     swapper.replaceResources(win, app);
 
     //Discord RPC
 
     ipcMain.on('loadRPC', (event, data) => {
-        if(data.area == 'game') {
+        if (data.area == 'game') {
             rpc_script.setActivity(RPC, {
                 state: 'In a game',
                 startTimestamp: data.now,
@@ -123,7 +159,7 @@ const createWindow = () => {
             });
         }
 
-        if(data.area == 'menu') {
+        if (data.area == 'menu') {
             rpc_script.setActivity(RPC, {
                 state: 'On the menu',
                 startTimestamp: app.startedAt,
@@ -140,10 +176,10 @@ const createWindow = () => {
         }
     });
 
-    ipcMain.on('settingChange', function(event, setting) {
+    ipcMain.on('settingChange', function (event, setting) {
         if (official_settings.includes(setting.name)) {
             settings.set(setting.name, setting.value);
-            if(setting.name == 'Unlimited FPS') {app.exit(); app.relaunch();}
+            if (setting.name == 'Unlimited FPS') { app.exit(); app.relaunch(); }
         }
     });
 }
@@ -163,7 +199,6 @@ app.whenReady().then(() => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
 })
-
 
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
