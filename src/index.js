@@ -1,11 +1,10 @@
-const { app, BrowserWindow, globalShortcut, protocol, ipcMain, dialog } = require('electron');
+    const { app, BrowserWindow, globalShortcut, protocol, ipcMain, dialog } = require('electron');
 app.startedAt = Date.now();
 const path = require('path');
 const official_settings = ['Unlimited FPS'];
 
 //auto update
 const { autoUpdater } = require("electron-updater")
-const { MacUpdater } = require("electron-updater")
 let updateLoaded = false;
 let updateNow = false;
 
@@ -25,7 +24,6 @@ const rpc_script = require('./rpc.js');
 
 //swapper_func
 const swapper = require('./swapper.js');
-const { machine } = require('os');
 
 
 //Uncap FPS
@@ -69,67 +67,40 @@ const createWindow = () => {
 
     //Auto Update
 
-    console.log("hello")
-    console.log(process.platform)
+    autoUpdater.setFeedURL({
+        owner: "Classy08",
+        repo: "Venge-Client",
+        provider: "github",
+        updaterCacheDirName: "venge-client-updater",
+    });
 
-    if (process.platform == "win32") {
-        autoUpdater.checkForUpdates();
+    autoUpdater.checkForUpdates();
 
-        autoUpdater.on('update-available', () => {
+    autoUpdater.on('update-available', () => {
 
-            const options = {
-                title: "Client Update",
-                buttons: ["Now", "Later"],
-                message: "Client Update available, do you want to install it now or after the next restart?",
-                icon: __dirname + "/icon.ico"
-            }
-            dialog.showMessageBox(options).then((result) => {
-                if (result.response === 0) {
-                    updateNow = true;
-                    if (updateLoaded) {
-                        autoUpdater.quitAndInstall();
-                    }
+        const options = {
+            title: "Client Update",
+            buttons: ["Now", "Later"],
+            message: "Client Update available, do you want to install it now or after the next restart?",
+            icon: __dirname + "/icon.ico"
+        }
+        dialog.showMessageBox(options).then((result) => {
+            if (result.response === 0) {
+                updateNow = true;
+                if (updateLoaded) {
+                    autoUpdater.quitAndInstall();
                 }
-            });
-
-        });
-
-        autoUpdater.on('update-downloaded', () => {
-            updateLoaded = true;
-            if (updateNow) {
-                autoUpdater.quitAndInstall(true, true);
             }
         });
-    }
 
-    if (process.platform == "darwin") {
-        MacUpdater.checkForUpdates();
+    });
 
-        MacUpdater.on('update-available', () => {
-            const options = {
-                title: "Client Update",
-                buttons: ["Now", "Later"],
-                message: "Client Update available, do you want to install it now or after the next restart?",
-                icon: __dirname + "/icon.ico"
-            }
-            dialog.showMessageBox(options).then((result) => {
-                if (result.response === 0) {
-                    updateNow = true;
-                    if (updateLoaded) {
-                        autoUpdater.quitAndInstall();
-                    }
-                }
-            });
-
-        });
-
-        MacUpdater.on('update-downloaded', () => {
-            updateLoaded = true;
-            if (updateNow) {
-                MacUpdater.quitAndInstall();
-            }
-        });
-    }
+    autoUpdater.on('update-downloaded', () => {
+        updateLoaded = true;
+        if (updateNow) {
+            autoUpdater.quitAndInstall(true, true);
+        }
+    });
 
     ipcMain.on('loadScripts', function (event) {
         swapper.runScripts(win, app);
@@ -199,6 +170,7 @@ app.whenReady().then(() => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
 })
+
 
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
